@@ -1,5 +1,5 @@
 export function getEnvironmentData() {
-return {
+  return {
     environment: "local-development",
     version: "1.0.0",
     timestamp: new Date().toISOString(),

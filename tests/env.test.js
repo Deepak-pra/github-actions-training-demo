@@ -1,9 +1,9 @@
-import { getEnvironmentData } from "../src/env";
+import { getEnvironmentData } from "../src/env.js";
 
 test("environment data returns correct keys", () => {
   const data = getEnvironmentData();
-  expect(data).toHaveProperty("environment");
-  expect(data).toHaveProperty("version");
-  expect(data).toHaveProperty("timestamp");
-  expect(data).toHaveProperty("commitSha");
+  expect(data.environment).toBeDefined();
+  expect(data.version).toBeDefined();
+  expect(data.timestamp).toBeDefined();
+  expect(data.commitSha).toBeDefined();
 });
