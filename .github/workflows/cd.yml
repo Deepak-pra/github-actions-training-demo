@@ -3,9 +3,7 @@ name: CD Pipeline
 on:
   push:
     branches:
-      - dev
-      - stage
-      - main
+      - test
 
 jobs:
   deploy:
