@@ -24,6 +24,12 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Perform Audit
+        run:  npm audit
+
+      - name: NPM audit fix
+        run: npm audit fix --force
+
       - name: Run ESLint
         run: npm run lint
 
