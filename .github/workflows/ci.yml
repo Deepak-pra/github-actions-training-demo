@@ -21,11 +21,12 @@ jobs:
         with:
           node-version: 20
 
+      - name: Reset node_modules and lockfile (pipeline-only)
+        run: |
+          rm -rf node_modules package-lock.json
+
       - name: Install dependencies
         run: npm install
-
-      - name: NPM audit fix
-        run: npm audit fix --force
 
       - name: Run ESLint
         run: npm run lint
