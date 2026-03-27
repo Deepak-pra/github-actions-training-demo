@@ -2,35 +2,35 @@ name: CD Pipeline
 
 on:
   push:
-    branches:
-      - test
+    branches: [ "dev", "stage", "main" ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
-    # This automatically loads the correct GitHub Environment:
-    # dev → dev env
-    # stage → stage env
-    # main → prod env
     environment: ${{ github.ref_name }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download Artifact
+      - name: Download static site
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact
+          name: static-site
           path: dist
 
-      - name: Configure AWS Credentials (OIDC)
+      - name: Configure AWS OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Deploy to private S3 bucket
+      - name: Inject Metadata
+        run: |
+          echo "window.DEPLOY_ENV='${{ github.ref_name }}';" >> dist/metadata.js
+          echo "window.COMMIT_SHA='${{ github.sha }}';" >> dist/metadata.js
+          echo "window.BUILD_TIME='$(date --utc +%FT%TZ)';" >> dist/metadata.js
+
+      - name: Deploy to S3
         run: |
           aws s3 sync dist/ s3://${{ vars.S3_BUCKET_NAME }} --delete
