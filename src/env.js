@@ -3,7 +3,6 @@ export function getEnvironmentData() {
     environment: "local",
     version: "1.0.0",
     timestamp: new Date().toISOString(),
-    commitSha: "LOCAL-SHA"
+    commitSha: "LOCAL"
   };
 }
-``

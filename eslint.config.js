@@ -1,9 +1,11 @@
+import js from "@eslint/js";
+import importPlugin from "eslint-plugin-import";
 import vitest from "eslint-plugin-vitest";
 
 export default [
+  js.configs.recommended,
   {
-    files: ["**/*.js"],
-    ignores: ["dist"],
+    files: ["src/**/*.js"],
     languageOptions: {
       globals: {
         document: "readonly",
@@ -11,7 +13,7 @@ export default [
       }
     },
     plugins: {
-      vitest
+      import: importPlugin
     },
     rules: {
       "no-unused-vars": "warn",
