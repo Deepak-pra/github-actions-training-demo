@@ -9,13 +9,17 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    # This automatically loads the correct GitHub Environment:
+    # dev → dev env
+    # stage → stage env
+    # main → prod env
     environment: ${{ github.ref_name }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download Artifact from CI
+      - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
           name: build-artifact
@@ -27,6 +31,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Deploy to S3 Bucket
+      - name: Deploy to private S3 bucket
         run: |
           aws s3 sync dist/ s3://${{ vars.S3_BUCKET_NAME }} --delete
