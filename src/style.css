@@ -1,13 +1,8 @@
 body {
   font-family: Arial, sans-serif;
   padding: 20px;
-  background: #fafafa;
 }
 
 h1 {
-  color: #333;
-}
-
-#metadata p {
-  margin: 5px 0;
+  color: #2c3e50;
 }

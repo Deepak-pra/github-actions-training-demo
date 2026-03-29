@@ -1,7 +1,7 @@
 import assert from "assert";
 
-describe("Static App Test", () => {
-  it("should run a sample test", () => {
-    assert.strictEqual(1 + 1, 2);
+describe("Basic sanity test", () => {
+  it("should validate math works", () => {
+    assert.strictEqual(2 + 2, 4);
   });
 });
