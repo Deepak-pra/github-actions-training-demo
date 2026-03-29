@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ "dev", "stage", "main" ]
+    branches: ["dev", "stage", "main"]
   pull_request:
 
 jobs:
@@ -13,26 +13,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # LINT (uses ESLint via npx)
+      # Lint (via npx, no local install, no repo dependencies)
       - name: Run linting
         run: npx eslint src --ext .js
 
-      # UNIT TESTS (Node built‑in test runner)
+      # Unit tests (Node built-in test runner)
       - name: Run unit tests
         run: node --test tests/*.js
 
-      # SECURITY SCAN (static-only project has no dependencies)
-      - name: Security scan
-        run: |
-          echo "No dependencies present — repository is vulnerability‑free."
-
-      # PREPARE BUILD (logical build step)
+      # Logical "build" step (static site = already buildable)
       - name: Prepare build output
         run: |
+          rm -rf dist
           mkdir dist
           cp -r src/* dist/
 
-      # PACKAGE ARTIFACT FOR CD
+      # Upload artifact for CD
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:

@@ -1,22 +1,29 @@
 name: CD Pipeline
 
 on:
-  push:
-    branches: [ "dev", "stage", "main" ]
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
 
 jobs:
   deploy:
+    # Deploy only if CI succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name }}
+
+    # Map branch → environment
+    environment: ${{ github.event.workflow_run.head_branch }}
 
     steps:
-      - name: Download build artifact
+      - name: Download artifact from CI
         uses: actions/download-artifact@v4
         with:
           name: static-site
           path: dist
+          run-id: ${{ github.event.workflow_run.id }}
 
-      - name: Configure AWS via OIDC
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -24,8 +31,8 @@ jobs:
 
       - name: Inject deployment metadata
         run: |
-          echo "window.DEPLOY_ENV='${{ github.ref_name }}';" >> dist/metadata.js
-          echo "window.COMMIT_SHA='${{ github.sha }}';" >> dist/metadata.js
+          echo "window.DEPLOY_ENV='${{ github.event.workflow_run.head_branch }}';" >> dist/metadata.js
+          echo "window.COMMIT_SHA='${{ github.event.workflow_run.head_sha }}';" >> dist/metadata.js
           echo "window.BUILD_TIME='$(date -u +%FT%TZ)';" >> dist/metadata.js
 
       - name: Deploy to S3
