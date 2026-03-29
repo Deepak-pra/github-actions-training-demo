@@ -1,7 +1,6 @@
-import assert from "assert";
+import { test } from "node:test";
+import assert from "node:assert";
 
-describe("Basic sanity test", () => {
-  it("should validate math works", () => {
-    assert.strictEqual(2 + 2, 4);
-  });
+test("basic sanity test", () => {
+  assert.strictEqual(2 + 2, 4);
 });

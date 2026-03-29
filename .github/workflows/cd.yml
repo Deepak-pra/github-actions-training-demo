@@ -10,26 +10,23 @@ jobs:
     environment: ${{ github.ref_name }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download static site
+      - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: static-site
           path: dist
 
-      - name: Configure AWS OIDC
+      - name: Configure AWS via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Inject Metadata
+      - name: Inject deployment metadata
         run: |
           echo "window.DEPLOY_ENV='${{ github.ref_name }}';" >> dist/metadata.js
           echo "window.COMMIT_SHA='${{ github.sha }}';" >> dist/metadata.js
-          echo "window.BUILD_TIME='$(date --utc +%FT%TZ)';" >> dist/metadata.js
+          echo "window.BUILD_TIME='$(date -u +%FT%TZ)';" >> dist/metadata.js
 
       - name: Deploy to S3
         run: |

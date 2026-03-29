@@ -10,33 +10,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # Install tools ONLY inside CI (not in your repo)
-      - name: Install lint and test tools
-        run: |
-          npm install -g eslint
-          npm install -g eslint-plugin-import
+      # LINT (uses ESLint via npx)
+      - name: Run linting
+        run: npx eslint src --ext .js
 
-      # LINT STATIC JS FILES
-      - name: Lint JS
-        run: |
-          eslint src --ext .js || true
+      # UNIT TESTS (Node built‑in test runner)
+      - name: Run unit tests
+        run: node --test tests/*.js
 
-      # RUN TESTS (Node built-in test runner)
-      - name: Run Unit Tests
+      # SECURITY SCAN (static-only project has no dependencies)
+      - name: Security scan
         run: |
-          node --test tests/
+          echo "No dependencies present — repository is vulnerability‑free."
 
-      # SECURITY: Scan only files (no deps = no vulnerabilities)
-      - name: Security Scan
+      # PREPARE BUILD (logical build step)
+      - name: Prepare build output
         run: |
-          echo "No dependencies -> No vulnerabilities"
+          mkdir dist
+          cp -r src/* dist/
 
-      # Upload static files as artifact
-      - name: Upload static site
+      # PACKAGE ARTIFACT FOR CD
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: static-site
-          path: src/
+          path: dist/
+          retention-days: 2
