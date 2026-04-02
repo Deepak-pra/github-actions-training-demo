@@ -2,13 +2,19 @@ name: CI Pipeline (Node.js & Python - Path Based)
 
 on:
   push:
-    branches: dev
+    branches:
+      - dev
+      - stage
+      - main
     paths:
       - node-app/**
       - python-app/**
       - .github/workflows/**
   pull_request:
-    branches: [ dev, stage, main ]
+    branches:
+      - dev
+      - stage
+      - main
     paths:
       - node-app/**
       - python-app/**
@@ -35,7 +41,6 @@ jobs:
         run: |
           echo "Detecting changed files..."
 
-          # Decide comparison base depending on event type
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
           else
@@ -46,20 +51,31 @@ jobs:
           echo "Head SHA: ${{ github.sha }}"
 
           git diff --name-only "$BASE_SHA" "${{ github.sha }}" > files.txt || true
+
           echo "Changed files:"
           cat files.txt
 
+          NODE_CHANGED=false
+          PYTHON_CHANGED=false
+
+          # If workflow files changed, run full CI
+          if grep -q "^.github/workflows/" files.txt; then
+            echo "Workflow change detected → full CI will run"
+            NODE_CHANGED=true
+            PYTHON_CHANGED=true
+          fi
+
+          # Detect app-level changes
           if grep -q "^node-app/" files.txt; then
-            echo "node_changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "node_changed=false" >> $GITHUB_OUTPUT
+            NODE_CHANGED=true
           fi
 
           if grep -q "^python-app/" files.txt; then
-            echo "python_changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "python_changed=false" >> $GITHUB_OUTPUT
+            PYTHON_CHANGED=true
           fi
+
+          echo "node_changed=$NODE_CHANGED" >> $GITHUB_OUTPUT
+          echo "python_changed=$PYTHON_CHANGED" >> $GITHUB_OUTPUT
 
   node-ci:
     name: Node.js CI
@@ -68,8 +84,7 @@ jobs:
     if: needs.detect-changes.outputs.node_changed == 'true'
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -90,8 +105,7 @@ jobs:
     if: needs.detect-changes.outputs.python_changed == 'true'
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5
