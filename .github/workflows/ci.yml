@@ -22,7 +22,7 @@ jobs:
 
       # Unit tests (Node built-in test runner)
       - name: Run unit tests
-        run: node --test tests/*.js
+        run: npm run tests test
 
       # Logical "build" step (static site = already buildable)
       - name: Prepare build output
