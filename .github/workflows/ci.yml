@@ -6,11 +6,13 @@ on:
     paths:
       - node-app/**
       - python-app/**
+      - .github/workflows/**
   pull_request:
     branches: [ dev, stage, main ]
     paths:
       - node-app/**
       - python-app/**
+      - .github/workflows/**
 
 jobs:
   detect-changes:
