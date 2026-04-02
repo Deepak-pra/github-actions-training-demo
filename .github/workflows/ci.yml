@@ -39,6 +39,7 @@ jobs:
           name: static-site
           path: dist/
           retention-days: 2
+          run-id: ${{ github.event.workflow_run.id }}
 
   cd:
     runs-on: ubuntu-22.04
