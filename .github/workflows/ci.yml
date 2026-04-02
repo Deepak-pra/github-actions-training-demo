@@ -1,32 +1,93 @@
-name: CI Pipeline
+name: CI Pipeline (Node.js & Python - Path Based)
 
 on:
   push:
     branches: [ dev, stage, main ]
+    paths:
+      - node-app/**
+      - python-app/**
+  pull_request:
+    branches: [ dev, stage, main ]
+    paths:
+      - node-app/**
+      - python-app/**
 
 jobs:
-  test:
+  detect-changes:
+    name: Detect Changed Paths
     runs-on: ubuntu-latest
 
+    outputs:
+      node_changed: ${{ steps.detect.outputs.node_changed }}
+      python_changed: ${{ steps.detect.outputs.python_changed }}
+
     steps:
-      - name: code checkout
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes
+        id: detect
+        run: |
+          echo "Detecting changed files..."
+
+          git diff --name-only origin/${{ github.base_ref }}...${{ github.sha }} > files.txt || true
+          cat files.txt
+
+          if grep -q "^node-app/" files.txt; then
+            echo "node_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "node_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          if grep -q "^python-app/" files.txt; then
+            echo "python_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "python_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+  node-ci:
+    name: Node.js CI
+    needs: detect-changes
+    runs-on: ubuntu-latest
+
+    if: needs.detect-changes.outputs.node_changed == 'true'
+
+    steps:
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Setup Node.Js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          version: 3.14
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Run NPM linting
-        run: npx eslint src
-        
-      - name: Run Unit Testing
-        run: node --test tests/*.js
-        
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+      - name: Install dependencies & run app
+        working-directory: node-app
+        run: |
+          npm install
+          npm test
+
+  python-ci:
+    name: Python CI
+    needs: detect-changes
+    runs-on: ubuntu-latest
+
+    if: needs.detect-changes.outputs.python_changed == 'true'
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          name: ci-logs
-          path: src
-          run-id: ${{ github.run_id }}
+          python-version: '3.11'
 
+      - name: Install dependencies & run app
+        working-directory: python-app
+        run: |
+          pip install -r requirements.txt
+          python app.py
