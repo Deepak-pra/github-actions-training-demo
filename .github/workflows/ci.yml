@@ -2,71 +2,31 @@ name: CI Pipeline
 
 on:
   push:
-    branches: ["dev", "stage", "main"]
-  pull_request:
-    branches: ["dev", "stage", "main"]
-    types: [ opened, reopened]
-  workflow_dispatch:   
+    branches: dev
 
 jobs:
-  ci:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: code checkout
         uses: actions/checkout@v4
 
-      # Lint (via npx, no local install, no repo dependencies)
-      - name: Run linting
+      - name: Setup Node.Js
+        uses: actions/setup-python@v3
+        with:
+          version: 3.14
+
+      - name: Run NPM linting
         run: npx eslint src
-
-      # Unit tests (Node built-in test runner)
-      - name: Run unit tests
-        run: npm run tests test
-        continue-on-error: true
-
-      # Logical "build" step (static site = already buildable)
-      - name: Prepare build output
-        run: |
-          rm -rf dist
-          mkdir dist
-          cp -r src/* dist/
-
-      # Upload artifact for CD
-      - name: Upload build artifact
+        
+      - name: Run Unit Testing
+        run: node --test tests/*.js
+        
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: static-site
-          path: dist/
-          retention-days: 2
-          run-id: ${{ github.event.workflow_run.id }}
+          name: ci-logs
+          path: src
+          run-id: ${{ github.run_id }}
 
-  cd:
-    runs-on: ubuntu-22.04
-
-    # Map branch → environment
-    environment: ${{ github.event.workflow_run.head_branch }}
-
-    steps:
-      - name: Download artifact from CI
-        uses: actions/download-artifact@v4
-        with:
-          name: static-site
-          path: dist
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
-
-      - name: Inject deployment metadata
-        run: |
-          echo "window.DEPLOY_ENV='${{ github.event.workflow_run.head_branch }}';" >> dist/metadata.js
-          echo "window.COMMIT_SHA='${{ github.event.workflow_run.head_sha }}';" >> dist/metadata.js
-          echo "window.BUILD_TIME='$(date -u +%FT%TZ)';" >> dist/metadata.js
-
-      - name: Deploy to S3
-        run: |
-          aws s3 sync dist/ s3://${{ vars.S3_BUCKET_NAME }} --delete        
