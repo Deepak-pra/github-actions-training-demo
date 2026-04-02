@@ -2,12 +2,12 @@ name: CI Pipeline (Node.js & Python - Path Based)
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ dev, stage, main ]
     paths:
       - node-app/**
       - python-app/**
   pull_request:
-    branches: [ main, develop ]
+    branches: [ dev, stage, main ]
     paths:
       - node-app/**
       - python-app/**
