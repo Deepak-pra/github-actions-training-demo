@@ -3,5 +3,3 @@ function add(a, b) {
 }
 
 console.log("Addition result:", add(2, 3));
-
-module.exports = { add };
