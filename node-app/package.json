@@ -2,6 +2,10 @@
   "name": "node-demo",
   "version": "1.0.0",
   "scripts": {
+    "lint": "npx eslint app.js",
     "test": "node app.js"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
   }
 }

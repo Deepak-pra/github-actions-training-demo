@@ -2,19 +2,13 @@ name: CI Pipeline (Node.js & Python - Path Based)
 
 on:
   push:
-    branches:
-      - dev
-      - stage
-      - main
+    branches: [ dev, stage, main ]
     paths:
       - node-app/**
       - python-app/**
       - .github/workflows/**
   pull_request:
-    branches:
-      - dev
-      - stage
-      - main
+    branches: [ dev, stage, main ]
     paths:
       - node-app/**
       - python-app/**
@@ -22,97 +16,90 @@ on:
 
 jobs:
   detect-changes:
-    name: Detect Changed Paths
     runs-on: ubuntu-latest
-
     outputs:
       node_changed: ${{ steps.detect.outputs.node_changed }}
       python_changed: ${{ steps.detect.outputs.python_changed }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Detect changes
-        id: detect
+      - id: detect
         shell: bash
         run: |
-          echo "Detecting changed files..."
-
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
           else
             BASE_SHA="${{ github.event.before }}"
           fi
 
-          echo "Base SHA: $BASE_SHA"
-          echo "Head SHA: ${{ github.sha }}"
-
           git diff --name-only "$BASE_SHA" "${{ github.sha }}" > files.txt || true
 
-          echo "Changed files:"
-          cat files.txt
+          NODE=false
+          PYTHON=false
 
-          NODE_CHANGED=false
-          PYTHON_CHANGED=false
-
-          # If workflow files changed, run full CI
           if grep -q "^.github/workflows/" files.txt; then
-            echo "Workflow change detected → full CI will run"
-            NODE_CHANGED=true
-            PYTHON_CHANGED=true
+            NODE=true
+            PYTHON=true
           fi
 
-          # Detect app-level changes
           if grep -q "^node-app/" files.txt; then
-            NODE_CHANGED=true
+            NODE=true
           fi
 
           if grep -q "^python-app/" files.txt; then
-            PYTHON_CHANGED=true
+            PYTHON=true
           fi
 
-          echo "node_changed=$NODE_CHANGED" >> $GITHUB_OUTPUT
-          echo "python_changed=$PYTHON_CHANGED" >> $GITHUB_OUTPUT
+          echo "node_changed=$NODE" >> $GITHUB_OUTPUT
+          echo "python_changed=$PYTHON" >> $GITHUB_OUTPUT
 
   node-ci:
-    name: Node.js CI
     needs: detect-changes
-    runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.node_changed == 'true'
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install dependencies and run Node app
+      - name: Install dependencies
         working-directory: node-app
-        run: |
-          npm install
-          npm test
+        run: npm install
+
+      - name: Run lint
+        working-directory: node-app
+        run: npm run lint
+
+      - name: Run unit tests
+        working-directory: node-app
+        run: npm test
 
   python-ci:
-    name: Python CI
     needs: detect-changes
-    runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.python_changed == 'true'
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies and run Python app
+      - name: Install dependencies
         working-directory: python-app
-        run: |
-          pip install -r requirements.txt
-          python app.py
+        run: pip install -r requirements.txt
+
+      - name: Run lint
+        working-directory: python-app
+        run: flake8 .
+
+      - name: Run unit tests
+        working-directory: python-app
+        run: python -m unittest
