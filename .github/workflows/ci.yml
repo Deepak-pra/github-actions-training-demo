@@ -147,4 +147,4 @@ jobs:
         with:
           name: python-app-build
           path: python-app/dist
-          retention-days: 3
+          retention-days: 5
