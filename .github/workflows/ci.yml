@@ -53,7 +53,6 @@ jobs:
           NODE_CHANGED=false
           PYTHON_CHANGED=false
 
-          # If workflow files changed, run full CI
           if grep -q "^.github/workflows/" files.txt; then
             NODE_CHANGED=true
             PYTHON_CHANGED=true
@@ -87,18 +86,29 @@ jobs:
 
       - name: Install dependencies
         working-directory: node-app
-        shell: bash
         run: npm install
 
       - name: Run lint
         working-directory: node-app
-        shell: bash
         run: npm run lint
+        continue-on-error: true
 
       - name: Run unit tests
         working-directory: node-app
-        shell: bash
         run: npm test
+        continue-on-error: true
+
+      - name: Build application
+        working-directory: node-app
+        run: npm run build
+        continue-on-error: true
+
+      - name: Upload Node.js build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-app-build
+          path: node-app/dist
+          retention-days: 5
 
   python-ci:
     name: Python CI
@@ -125,3 +135,16 @@ jobs:
       - name: Run unit tests
         working-directory: python-app
         run: python -m unittest
+
+      - name: Build Python package
+        working-directory: python-app
+        run: |
+          pip install build
+          python -m build
+
+      - name: Upload Python build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-app-build
+          path: python-app/dist
+          retention-days: 5

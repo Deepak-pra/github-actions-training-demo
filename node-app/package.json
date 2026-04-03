@@ -1,12 +1,13 @@
 {
-  "name": "node-demo",
+  "name": "node-app",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "lint": "npx eslint app.js",
-    "test": "node app.js"
+    "lint": "eslint .",
+    "test": "node --test",
+    "build": "mkdir -p dist && cp -r src/* dist/"
   },
   "devDependencies": {
-    "eslint": "^8.57.0"
+    "eslint": "^8.0.0"
   }
 }
