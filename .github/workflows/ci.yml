@@ -108,7 +108,7 @@ jobs:
         with:
           name: node-app-build
           path: node-app/dist
-          retention-days: 3
+          retention-days: 5
 
   python-ci:
     name: Python CI
