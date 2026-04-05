@@ -1,4 +1,4 @@
-name: Day 6 Demo – Outputs & Artifacts Best Practices
+name: Artifacts_Outputs_Demo_CI
 
 on:
   workflow_dispatch:

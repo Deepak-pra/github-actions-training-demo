@@ -1,0 +1,35 @@
+name: Day 6 Demo – CD Consuming CI Artifact
+
+on:
+  workflow_run:
+    workflows:
+      - "Artifacts_Outputs_Demo_CI"
+    types:
+      - completed
+
+jobs:
+  consume-artifact:
+    name: Consume CI Artifact (CD Demo)
+    runs-on: ubuntu-latest
+
+    # CD must never run if CI failed
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Display CI context
+        run: |
+          echo "CI Workflow Run ID: ${{ github.event.workflow_run.id }}"
+          echo "CI Commit SHA: ${{ github.event.workflow_run.head_sha }}"
+          echo "Triggered by: ${GITHUB_EVENT_NAME}"
+
+      - name: Download artifact from CI workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: python-build-${{ github.event.workflow_run.head_sha }}
+          run-id: ${{ github.event.workflow_run.id }}
+          path: cd-input
+
+      - name: Inspect downloaded artifact
+        run: |
+          echo "Artifact received by CD pipeline:"
+          ls -R cd-input
