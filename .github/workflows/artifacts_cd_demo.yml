@@ -10,26 +10,36 @@ on:
 jobs:
   consume-artifact:
     name: Consume CI Artifact (CD Demo)
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
-    # CD must never run if CI failed
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
     steps:
-      - name: Display CI context
+      - name: Show CI run context
         run: |
           echo "CI Workflow Run ID: ${{ github.event.workflow_run.id }}"
-          echo "CI Commit SHA: ${{ github.event.workflow_run.head_sha }}"
-          echo "Triggered by: ${GITHUB_EVENT_NAME}"
+          echo "CI Head SHA: ${{ github.event.workflow_run.head_sha }}"
 
-      - name: Download artifact from CI workflow
+      - name: List artifacts from CI run
+        uses: actions/github-script@v7
+        id: list
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.payload.workflow_run.id
+            });
+            console.log(artifacts.data.artifacts.map(a => a.name));
+            core.setOutput("artifact_name", artifacts.data.artifacts[0].name);
+
+      - name: Download artifact from CI run
         uses: actions/download-artifact@v4
         with:
-          name: python-build-${{ github.event.workflow_run.head_sha }}
           run-id: ${{ github.event.workflow_run.id }}
+          name: ${{ steps.list.outputs.artifact_name }}
           path: cd-input
 
       - name: Inspect downloaded artifact
         run: |
-          echo "Artifact received by CD pipeline:"
+          echo "Artifact received by CD:"
           ls -R cd-input
