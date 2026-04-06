@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ---- STEP OUTPUT ----
+      # ---- STEP OUTPUT (CONTROL DATA) ----
       - name: Create step output
         id: meta
         run: |
@@ -25,18 +25,29 @@ jobs:
         with:
           python-version: '3.11'
 
+      # -------------------------------------------------
+      # STEP: Install build tool (this may succeed or fail)
+      # -------------------------------------------------
       - name: Install build tool
+        id: install_tool
         run: pip install build
 
+      # -------------------------------------------------
+      # CONDITIONAL BUILD STEP
+      # -------------------------------------------------
       - name: Build application
+        if: ${{ steps.install_tool.outcome == 'success' }}
         working-directory: python-app
         run: python -m build
 
-      # ---- ARTIFACT UPLOAD ----
+      # -------------------------------------------------
+      # CONDITIONAL ARTIFACT UPLOAD
+      # -------------------------------------------------
       - name: Upload artifact
+        if: ${{ steps.install_tool.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: python-build
+          name: ${{ steps.meta.outputs.artifact_name }}
           path: python-app/dist
           retention-days: 3
 
