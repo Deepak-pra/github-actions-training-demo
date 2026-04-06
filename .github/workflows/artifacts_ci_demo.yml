@@ -31,9 +31,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-cache-${{ runner.os }}-${{ hashFiles('python-app/requirements.txt') }}-demo-v5
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('python-app/requirements.txt') }}-demo-v6
           restore-keys: |
-            pip-cache-${{ runner.os }}-demo-v5
+            pip-cache-${{ runner.os }}-demo-v6
 
       # ---------------- DEPENDENCY INSTALL ----------------
       - name: Install dependencies
