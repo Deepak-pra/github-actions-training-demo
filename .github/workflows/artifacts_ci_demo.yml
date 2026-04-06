@@ -12,7 +12,8 @@ jobs:
       artifact_name: ${{ steps.meta.outputs.artifact_name }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Code checkout
+        uses: actions/checkout@v4
 
       # ---- STEP OUTPUT (CONTROL DATA) ----
       - name: Create step output
@@ -36,6 +37,7 @@ jobs:
       # CONDITIONAL BUILD STEP
       # -------------------------------------------------
       - name: Build application
+        id: app-build
         if: ${{ steps.install_tool.outcome == 'success' }}
         working-directory: python-app
         run: python -m build
@@ -44,7 +46,7 @@ jobs:
       # CONDITIONAL ARTIFACT UPLOAD
       # -------------------------------------------------
       - name: Upload artifact
-        if: ${{ steps.install_tool.outcome == 'success' }}
+        if: ${{ steps.app-build.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.artifact_name }}
@@ -57,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download artifact from CI
+      - name: Download artifact from CI - Demo
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.ci.outputs.artifact_name }}
