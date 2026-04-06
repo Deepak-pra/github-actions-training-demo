@@ -1,50 +1,69 @@
-name: Day 6 Demo – Outputs & Artifacts (Correct)
+name: Day 6 Demo – Outputs, Artifacts & Caching
 
 on:
   workflow_dispatch:
 
 jobs:
   ci:
-    name: CI Job (Build & Produce Artifact)
+    name: CI Job (Build, Cache & Produce Artifact)
     runs-on: ubuntu-latest
 
     outputs:
       artifact_name: ${{ steps.meta.outputs.artifact_name }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Code checkout
+        uses: actions/checkout@v4
 
-      # ---- STEP OUTPUT (CONTROL DATA) ----
+      # -------------------------------------------------
+      # STEP OUTPUT (CONTROL DATA)
+      # -------------------------------------------------
       - name: Create step output
         id: meta
         run: |
           echo "artifact_name=python-build" >> $GITHUB_OUTPUT
 
+      # -------------------------------------------------
+      # RUNTIME SETUP
+      # -------------------------------------------------
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       # -------------------------------------------------
-      # STEP: Install build tool (this may succeed or fail)
+      # CACHE: pip 다운로드 캐시 (DAY 7 topic)
       # -------------------------------------------------
-      - name: Install build tool
-        id: install_tool
-        run: pip install build
+      - name: Restore pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('python-app/requirements.txt') }}
+          restore-keys: |
+            pip-cache-${{ runner.os }}-
+
+      # -------------------------------------------------
+      # DEPENDENCY INSTALLATION
+      # -------------------------------------------------
+      - name: Install dependencies
+        id: install_deps
+        working-directory: python-app
+        run: pip install -r requirements.txt
 
       # -------------------------------------------------
       # CONDITIONAL BUILD STEP
       # -------------------------------------------------
       - name: Build application
-        if: ${{ steps.install_tool.outcome == 'success' }}
+        id: app-build
+        if: ${{ steps.install_deps.outcome == 'success' }}
         working-directory: python-app
         run: python -m build
 
       # -------------------------------------------------
-      # CONDITIONAL ARTIFACT UPLOAD
+      # CONDITIONAL ARTIFACT UPLOAD (DAY 6 topic)
       # -------------------------------------------------
       - name: Upload artifact
-        if: ${{ steps.install_tool.outcome == 'success' }}
+        if: ${{ steps.app-build.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.artifact_name }}
@@ -57,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download artifact from CI
+      - name: Download artifact from CI – Demo
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.ci.outputs.artifact_name }}
