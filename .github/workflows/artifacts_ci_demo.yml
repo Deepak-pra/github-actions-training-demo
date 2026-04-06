@@ -31,7 +31,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-cache-${{ runner.os }}-${{ hashFiles('python-app/requirements.txt') }}
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('python-app/requirements.txt') }}-demo
           restore-keys: |
             pip-cache-${{ runner.os }}-
 
