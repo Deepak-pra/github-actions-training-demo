@@ -1,4 +1,4 @@
-name: Day 6 + Day 7 Demo – Outputs, Artifacts & Caching
+name: Caching Demo
 
 on:
   workflow_dispatch:
@@ -15,7 +15,6 @@ jobs:
       - name: Code checkout
         uses: actions/checkout@v4
 
-      # ---------------- CONTROL DATA (DAY 6) ----------------
       - name: Create step output
         id: meta
         run: |
@@ -26,33 +25,20 @@ jobs:
         with:
           python-version: '3.11'
 
-      # ---------------- CACHE RESTORE (DAY 7) ----------------
-      - name: Restore pip cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-cache-${{ runner.os }}-${{ hashFiles('python-app/requirements.txt') }}-demo-v6
-          restore-keys: |
-            pip-cache-${{ runner.os }}-demo-v6
-
-      # ---------------- DEPENDENCY INSTALL ----------------
       - name: Install dependencies
         id: install_deps
         working-directory: python-app
         run: pip install -r requirements.txt
 
-      # ---------------- TOOL INSTALL ----------------
       - name: Install Python build tool
         run: pip install build
 
-      # ---------------- BUILD ----------------
       - name: Build application
         id: app-build
         if: ${{ steps.install_deps.outcome == 'success' }}
         working-directory: python-app
         run: python -m build
 
-      # ---------------- ARTIFACT (DAY 6) ----------------
       - name: Upload artifact
         if: ${{ steps.app-build.outcome == 'success' }}
         uses: actions/upload-artifact@v4
@@ -67,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download artifact from CI – Demo
+      - name: Download artifact from CI
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.ci.outputs.artifact_name }}
