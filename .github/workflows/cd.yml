@@ -13,22 +13,23 @@ permissions:
   id-token: write
 
 jobs:
-  deploy:
+  deploy-dev:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
-    environment: ${{ github.event.workflow_run.head_branch }}
+    # ✅ Explicitly deploy ONLY to dev
+    environment: dev
 
     steps:
-      - name: Show deployment context
+      - name: Show context
         run: |
-          echo "Branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "Deploying CI run: ${{ github.event.workflow_run.id }}"
           echo "Commit: ${{ github.event.workflow_run.head_sha }}"
           echo "Target bucket: ${{ vars.S3_BUCKET_NAME }}"
 
-      # ------------------------------------
-      # Download Node.js artifact (if exists)
-      # ------------------------------------
+      # ---------------------------
+      # Download Node artifact (if exists)
+      # ---------------------------
       - name: Download Node.js artifact
         uses: actions/download-artifact@v4
         with:
@@ -37,9 +38,9 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           if-no-files-found: ignore
 
-      # ------------------------------------
+      # ---------------------------
       # Download Python artifact (if exists)
-      # ------------------------------------
+      # ---------------------------
       - name: Download Python artifact
         uses: actions/download-artifact@v4
         with:
@@ -48,33 +49,31 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           if-no-files-found: ignore
 
-      # ------------------------------------
-      # AWS OIDC credentials
-      # ------------------------------------
+      # ---------------------------
+      # AWS OIDC
+      # ---------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      # ------------------------------------
-      # Deploy Node.js (only if built)
-      # ------------------------------------
-      - name: Deploy Node.js app
+      # ---------------------------
+      # Deploy Node.js (if built)
+      # ---------------------------
+      - name: Deploy Node.js to dev S3
         if: ${{ hashFiles('artifacts/node/**') != '' }}
         run: |
-          echo "Deploying Node.js app"
           aws s3 sync artifacts/node/ \
             s3://${{ vars.S3_BUCKET_NAME }}/node/ \
             --delete
 
-      # ------------------------------------
-      # Deploy Python (only if built)
-      # ------------------------------------
-      - name: Deploy Python app
+      # ---------------------------
+      # Deploy Python (if built)
+      # ---------------------------
+      - name: Deploy Python to dev S3
         if: ${{ hashFiles('artifacts/python/**') != '' }}
         run: |
-          echo "Deploying Python app"
           aws s3 sync artifacts/python/ \
             s3://${{ vars.S3_BUCKET_NAME }}/python/ \
             --delete

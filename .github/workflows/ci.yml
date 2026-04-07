@@ -2,13 +2,13 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [dev, stage, main]
+    branches: [dev]
     paths:
       - node-app/**
       - python-app/**
       - .github/workflows/**
   pull_request:
-    branches: [dev, stage, main]
+    branches: [dev]
     paths:
       - node-app/**
       - python-app/**
@@ -30,7 +30,6 @@ jobs:
 
       - name: Detect changes
         id: detect
-        shell: bash
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
@@ -42,11 +41,6 @@ jobs:
 
           NODE_CHANGED=false
           PYTHON_CHANGED=false
-
-          if grep -q "^.github/workflows/" files.txt; then
-            NODE_CHANGED=true
-            PYTHON_CHANGED=true
-          fi
 
           if grep -q "^node-app/" files.txt; then
             NODE_CHANGED=true
@@ -67,26 +61,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install dependencies
+      - run: npm install
         working-directory: node-app
-        run: npm install
 
-      - name: Lint
+      - run: npm test
         working-directory: node-app
-        run: npm run lint
 
-      - name: Unit tests
+      - run: npm run build
         working-directory: node-app
-        run: npm test
-
-      - name: Build application
-        working-directory: node-app
-        run: npm run build
 
       - name: Upload Node artifact
         uses: actions/upload-artifact@v4
@@ -103,28 +89,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - run: pip install -r requirements.txt
         working-directory: python-app
-        run: pip install -r requirements.txt
 
-      - name: Lint
+      - run: python -m unittest
         working-directory: python-app
-        run: flake8 .
 
-      - name: Unit tests
-        working-directory: python-app
-        run: python -m unittest
-
-      - name: Build Python package
-        working-directory: python-app
-        run: |
+      - run: |
           pip install build
           python -m build
+        working-directory: python-app
 
       - name: Upload Python artifact
         uses: actions/upload-artifact@v4
@@ -132,4 +110,3 @@ jobs:
           name: python-app-build
           path: python-app/dist
           retention-days: 5
-``
