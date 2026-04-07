@@ -77,3 +77,4 @@ jobs:
           aws s3 sync artifacts/python/ \
             s3://${{ vars.S3_BUCKET_NAME }}/python/ \
             --delete
+``
