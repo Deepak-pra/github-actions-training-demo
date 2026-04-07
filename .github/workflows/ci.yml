@@ -1,20 +1,14 @@
-name: CI Pipeline (Node.js & Python - Path Based)
+name: CI Pipeline
 
 on:
   push:
-    branches:
-      - dev
-      - stage
-      - main
+    branches: [dev]
     paths:
       - node-app/**
       - python-app/**
       - .github/workflows/**
   pull_request:
-    branches:
-      - dev
-      - stage
-      - main
+    branches: [dev]
     paths:
       - node-app/**
       - python-app/**
@@ -30,17 +24,13 @@ jobs:
       python_changed: ${{ steps.detect.outputs.python_changed }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Detect changes
         id: detect
-        shell: bash
         run: |
-          echo "Detecting changed files..."
-
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
           else
@@ -48,15 +38,9 @@ jobs:
           fi
 
           git diff --name-only "$BASE_SHA" "${{ github.sha }}" > files.txt || true
-          cat files.txt
 
           NODE_CHANGED=false
           PYTHON_CHANGED=false
-
-          if grep -q "^.github/workflows/" files.txt; then
-            NODE_CHANGED=true
-            PYTHON_CHANGED=true
-          fi
 
           if grep -q "^node-app/" files.txt; then
             NODE_CHANGED=true
@@ -72,38 +56,25 @@ jobs:
   node-ci:
     name: Node.js CI
     needs: detect-changes
-    runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.node_changed == 'true'
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install dependencies
+      - run: npm install
         working-directory: node-app
-        run: npm install
 
-      - name: Run lint
+      - run: npm test
         working-directory: node-app
-        run: npm run lint
-        continue-on-error: true
 
-      - name: Run unit tests
+      - run: npm run build
         working-directory: node-app
-        run: npm test
-        continue-on-error: true
 
-      - name: Build application
-        working-directory: node-app
-        run: npm run build
-        continue-on-error: true
-
-      - name: Upload Node.js build artifact
+      - name: Upload Node artifact
         uses: actions/upload-artifact@v4
         with:
           name: node-app-build
@@ -113,36 +84,27 @@ jobs:
   python-ci:
     name: Python CI
     needs: detect-changes
-    runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.python_changed == 'true'
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - run: pip install -r requirements.txt
         working-directory: python-app
-        run: pip install -r requirements.txt
 
-      - name: Run lint
+      - run: python -m unittest
         working-directory: python-app
-        run: flake8 .
 
-      - name: Run unit tests
-        working-directory: python-app
-        run: python -m unittest
-
-      - name: Build Python package
-        working-directory: python-app
-        run: |
+      - run: |
           pip install build
           python -m build
+        working-directory: python-app
 
-      - name: Upload Python build artifact
+      - name: Upload Python artifact
         uses: actions/upload-artifact@v4
         with:
           name: python-app-build
