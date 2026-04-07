@@ -16,63 +16,79 @@ jobs:
   deploy-dev:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-
-    # Explicitly deploy ONLY to dev
     environment: dev
 
     steps:
       - name: Show context
         run: |
-          echo "Deploying CI run: ${{ github.event.workflow_run.id }}"
-          echo "Commit: ${{ github.event.workflow_run.head_sha }}"
-          echo "Target bucket: ${{ vars.S3_BUCKET_NAME }}"
+          echo "CI run id: ${{ github.event.workflow_run.id }}"
+          echo "Commit:   ${{ github.event.workflow_run.head_sha }}"
 
-      # ---------------------------
-      # Download Node artifact (if exists)
-      # ---------------------------
+      # --------------------------------------------------
+      # STEP 1: LIST ARTIFACTS FROM CI RUN
+      # --------------------------------------------------
+      - name: List CI artifacts
+        id: list
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.payload.workflow_run.id
+            });
+
+            const names = artifacts.data.artifacts.map(a => a.name);
+            core.setOutput("names", names.join(","));
+
+            console.log("Artifacts found:", names);
+
+      # --------------------------------------------------
+      # STEP 2: DOWNLOAD NODE ARTIFACT if PRESENT
+      # --------------------------------------------------
       - name: Download Node.js artifact
+        if: contains(steps.list.outputs.names, 'node-app-build')
         uses: actions/download-artifact@v4
         with:
           name: node-app-build
           path: artifacts/node
           run-id: ${{ github.event.workflow_run.id }}
-          if-no-files-found: ignore
 
-      # ---------------------------
-      # Download Python artifact (if exists)
-      # ---------------------------
+      # --------------------------------------------------
+      # STEP 3: DOWNLOAD PYTHON ARTIFACT if PRESENT
+      # --------------------------------------------------
       - name: Download Python artifact
+        if: contains(steps.list.outputs.names, 'python-app-build')
         uses: actions/download-artifact@v4
         with:
           name: python-app-build
           path: artifacts/python
           run-id: ${{ github.event.workflow_run.id }}
-          if-no-files-found: ignore
 
-      # ---------------------------
-      # AWS OIDC
-      # ---------------------------
+      # --------------------------------------------------
+      # AWS CREDENTIALS
+      # --------------------------------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      # ---------------------------
-      # Deploy Node.js (if built)
-      # ---------------------------
+      # --------------------------------------------------
+      # DEPLOY NODE (only if downloaded)
+      # --------------------------------------------------
       - name: Deploy Node.js to dev S3
-        if: ${{ hashFiles('artifacts/node/**') != '' }}
+        if: contains(steps.list.outputs.names, 'node-app-build')
         run: |
           aws s3 sync artifacts/node/ \
             s3://${{ vars.S3_BUCKET_NAME }}/node/ \
             --delete
 
-      # ---------------------------
-      # Deploy Python (if built)
-      # ---------------------------
+      # --------------------------------------------------
+      # DEPLOY PYTHON (only if downloaded)
+      # --------------------------------------------------
       - name: Deploy Python to dev S3
-        if: ${{ hashFiles('artifacts/python/**') != '' }}
+        if: contains(steps.list.outputs.names, 'python-app-build')
         run: |
           aws s3 sync artifacts/python/ \
             s3://${{ vars.S3_BUCKET_NAME }}/python/ \
