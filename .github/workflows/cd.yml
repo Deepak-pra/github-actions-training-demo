@@ -2,69 +2,39 @@ name: CD Pipeline
 
 on:
   workflow_run:
-    workflows: ["CI Pipeline (Node.js & Python - Path Based)"]
+    workflows: ["CI Pipeline"]
     types:
       - completed
 
 jobs:
   deploy:
+    # Deploy only if CI succeeded
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
-    # Environment = branch name (dev / stage / main)
+    # Map branch → environment
     environment: ${{ github.event.workflow_run.head_branch }}
 
     steps:
-      - name: Show deployment context
-        run: |
-          echo "Branch: ${{ github.event.workflow_run.head_branch }}"
-          echo "Commit: ${{ github.event.workflow_run.head_sha }}"
-
-      # --------------------------------------------------
-      # Download Node.js artifact (if it exists)
-      # --------------------------------------------------
-      - name: Download Node.js artifact
+      - name: Download artifact from CI
         uses: actions/download-artifact@v4
         with:
-          name: node-app-build
-          path: artifacts/node
+          name: static-site
+          path: dist
           run-id: ${{ github.event.workflow_run.id }}
-          if-no-files-found: ignore
 
-      # --------------------------------------------------
-      # Download Python artifact (if it exists)
-      # --------------------------------------------------
-      - name: Download Python artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: python-app-build
-          path: artifacts/python
-          run-id: ${{ github.event.workflow_run.id }}
-          if-no-files-found: ignore
-
-      # --------------------------------------------------
-      # Configure AWS credentials (OIDC)
-      # --------------------------------------------------
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      # --------------------------------------------------
-      # Deploy Node.js app (ONLY if artifact exists)
-      # --------------------------------------------------
-      - name: Deploy Node.js app to S3
-        if: ${{ hashFiles('artifacts/node/**') != '' }}
+      - name: Inject deployment metadata
         run: |
-          echo "Deploying Node.js app"
-          aws s3 sync artifacts/node/ s3://${{ vars.S3_BUCKET_NAME }}/ --delete
+          echo "window.DEPLOY_ENV='${{ github.event.workflow_run.head_branch }}';" >> dist/metadata.js
+          echo "window.COMMIT_SHA='${{ github.event.workflow_run.head_sha }}';" >> dist/metadata.js
+          echo "window.BUILD_TIME='$(date -u +%FT%TZ)';" >> dist/metadata.js
 
-      # --------------------------------------------------
-      # Deploy Python app (ONLY if artifact exists)
-      # --------------------------------------------------
-      - name: Deploy Python app to S3
-        if: ${{ hashFiles('artifacts/python/**') != '' }}
+      - name: Deploy to S3
         run: |
-          echo "Deploying Python app"
-          aws s3 sync artifacts/python/ s3://${{ vars.S3_BUCKET_NAME }}/ --delete
+          aws s3 sync dist/ s3://${{ vars.S3_BUCKET_NAME }} --delete
