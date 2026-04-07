@@ -2,7 +2,7 @@ name: CD Pipeline
 
 on:
   workflow_run:
-    workflows: ["CI Pipeline (Node.js & Python - Path Based)"]
+    workflows: ["CI Pipeline"]
     types:
       - completed
 
