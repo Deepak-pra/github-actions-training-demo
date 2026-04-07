@@ -2,10 +2,8 @@ name: CD Pipeline
 
 on:
   workflow_run:
-    workflows:
-      - "CI Pipeline"
-    types:
-      - completed
+    workflows: ["CI Pipeline"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -22,74 +20,49 @@ jobs:
       - name: Show context
         run: |
           echo "CI run id: ${{ github.event.workflow_run.id }}"
-          echo "Commit:   ${{ github.event.workflow_run.head_sha }}"
+          echo "Commit: ${{ github.event.workflow_run.head_sha }}"
 
-      # --------------------------------------------------
-      # STEP 1: LIST ARTIFACTS FROM CI RUN
-      # --------------------------------------------------
       - name: List CI artifacts
         id: list
         uses: actions/github-script@v7
         with:
           script: |
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+            const res = await github.rest.actions.listWorkflowRunArtifacts({
               owner: context.repo.owner,
               repo: context.repo.repo,
               run_id: context.payload.workflow_run.id
             });
-
-            const names = artifacts.data.artifacts.map(a => a.name);
+            const names = res.data.artifacts.map(a => a.name);
             core.setOutput("names", names.join(","));
-
             console.log("Artifacts found:", names);
 
-      # --------------------------------------------------
-      # STEP 2: DOWNLOAD NODE ARTIFACT if PRESENT
-      # --------------------------------------------------
       - name: Download Node.js artifact
         if: contains(steps.list.outputs.names, 'node-app-build')
         uses: actions/download-artifact@v4
         with:
           name: node-app-build
-          path: artifacts/node
           run-id: ${{ github.event.workflow_run.id }}
+          path: artifacts/node
 
-      # --------------------------------------------------
-      # STEP 3: DOWNLOAD PYTHON ARTIFACT if PRESENT
-      # --------------------------------------------------
       - name: Download Python artifact
         if: contains(steps.list.outputs.names, 'python-app-build')
         uses: actions/download-artifact@v4
         with:
           name: python-app-build
-          path: artifacts/python
           run-id: ${{ github.event.workflow_run.id }}
+          path: artifacts/python
 
-      # --------------------------------------------------
-      # AWS CREDENTIALS
-      # --------------------------------------------------
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      # --------------------------------------------------
-      # DEPLOY NODE (only if downloaded)
-      # --------------------------------------------------
-      - name: Deploy Node.js to dev S3
+      - name: Deploy Node.js
         if: contains(steps.list.outputs.names, 'node-app-build')
         run: |
-          aws s3 sync artifacts/node/ \
-            s3://${{ vars.S3_BUCKET_NAME }}/node/ \
-            --delete
+          aws s3 sync artifacts/node/ s3://${{ vars.S3_BUCKET_NAME }}/node/ --delete
 
-      # --------------------------------------------------
-      # DEPLOY PYTHON (only if downloaded)
-      # --------------------------------------------------
-      - name: Deploy Python to dev S3
+      - name: Deploy Python
         if: contains(steps.list.outputs.names, 'python-app-build')
         run: |
-          aws s3 sync artifacts/python/ \
-            s3://${{ vars.S3_BUCKET_NAME }}/python/ \
-            --delete
+          aws s3 sync artifacts/python/ s3://${{ vars.S3_BUCKET_NAME }}/python/ --delete

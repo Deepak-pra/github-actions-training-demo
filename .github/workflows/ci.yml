@@ -16,9 +16,7 @@ on:
 
 jobs:
   detect-changes:
-    name: Detect Changed Paths
     runs-on: ubuntu-latest
-
     outputs:
       node_changed: ${{ steps.detect.outputs.node_changed }}
       python_changed: ${{ steps.detect.outputs.python_changed }}
@@ -28,8 +26,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect changes
-        id: detect
+      - id: detect
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
@@ -39,26 +36,12 @@ jobs:
 
           git diff --name-only "$BASE_SHA" "${{ github.sha }}" > files.txt || true
 
-          NODE_CHANGED=false
-          PYTHON_CHANGED=false
-
-          if grep -q "^node-app/" files.txt; then
-            NODE_CHANGED=true
-          fi
-
-          if grep -q "^python-app/" files.txt; then
-            PYTHON_CHANGED=true
-          fi
-
-          echo "node_changed=$NODE_CHANGED" >> $GITHUB_OUTPUT
-          echo "python_changed=$PYTHON_CHANGED" >> $GITHUB_OUTPUT
+          echo "node_changed=$(grep -q '^node-app/' files.txt && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "python_changed=$(grep -q '^python-app/' files.txt && echo true || echo false)" >> $GITHUB_OUTPUT
 
   node-ci:
-    name: Node.js CI
     needs: detect-changes
-    if: needs.detect-changes.outputs.node_changed == 'true'
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -67,26 +50,21 @@ jobs:
 
       - run: npm install
         working-directory: node-app
-
       - run: npm test
         working-directory: node-app
-
       - run: npm run build
         working-directory: node-app
 
-      - name: Upload Node artifact
-        uses: actions/upload-artifact@v4
+      # ✅ Always upload on PUSH
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
         with:
           name: node-app-build
           path: node-app/dist
-          retention-days: 5
 
   python-ci:
-    name: Python CI
     needs: detect-changes
-    if: needs.detect-changes.outputs.python_changed == 'true'
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -95,18 +73,16 @@ jobs:
 
       - run: pip install -r requirements.txt
         working-directory: python-app
-
       - run: python -m unittest
         working-directory: python-app
-
       - run: |
           pip install build
           python -m build
         working-directory: python-app
 
-      - name: Upload Python artifact
-        uses: actions/upload-artifact@v4
+      # ✅ Always upload on PUSH
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
         with:
           name: python-app-build
           path: python-app/dist
-          retention-days: 5
