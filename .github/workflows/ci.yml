@@ -4,85 +4,46 @@ on:
   push:
     branches: [dev]
     paths:
-      - node-app/**
       - python-app/**
       - .github/workflows/**
   pull_request:
     branches: [dev]
     paths:
-      - node-app/**
       - python-app/**
       - .github/workflows/**
 
 jobs:
-  detect-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      node_changed: ${{ steps.detect.outputs.node_changed }}
-      python_changed: ${{ steps.detect.outputs.python_changed }}
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - id: detect
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          else
-            BASE_SHA="${{ github.event.before }}"
-          fi
-
-          git diff --name-only "$BASE_SHA" "${{ github.sha }}" > files.txt || true
-
-          echo "node_changed=$(grep -q '^node-app/' files.txt && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "python_changed=$(grep -q '^python-app/' files.txt && echo true || echo false)" >> $GITHUB_OUTPUT
-
-  node-ci:
-    needs: detect-changes
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - run: npm install
-        working-directory: node-app
-      - run: npm test
-        working-directory: node-app
-      - run: npm run build
-        working-directory: node-app
-
-      # ✅ Always upload on PUSH
-      - uses: actions/upload-artifact@v4
-        if: github.event_name == 'push'
-        with:
-          name: node-app-build
-          path: node-app/dist
-
   python-ci:
-    needs: detect-changes
+    name: Python CI
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - run: pip install -r requirements.txt
+      - name: Install dependencies
         working-directory: python-app
-      - run: python -m unittest
+        run: pip install -r requirements.txt
+
+      - name: Run unit tests
         working-directory: python-app
-      - run: |
+        run: python -m unittest
+
+      - name: Build Python package
+        working-directory: python-app
+        run: |
           pip install build
           python -m build
-        working-directory: python-app
 
-      # ✅ Always upload on PUSH
-      - uses: actions/upload-artifact@v4
+      # ✅ Upload artifact ONLY for push events (deployable)
+      - name: Upload Python artifact
         if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
         with:
           name: python-app-build
           path: python-app/dist
