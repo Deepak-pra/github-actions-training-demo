@@ -57,6 +57,7 @@ jobs:
   cd:
     name: CD Job (Deploy to S3)
     needs: ci
+    environment: dev
     runs-on: ubuntu-latest
 
     steps:
