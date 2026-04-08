@@ -3,6 +3,10 @@ name: CD Demo (CI → CD → S3)
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   ci:
     name: CI Job (Build & Produce Artifact)
@@ -15,25 +19,16 @@ jobs:
       - name: Code checkout
         uses: actions/checkout@v4
 
-      # -----------------------------
-      # Define artifact name
-      # -----------------------------
       - name: Create step output
         id: meta
         run: |
           echo "artifact_name=python-build" >> $GITHUB_OUTPUT
 
-      # -----------------------------
-      # Setup Python
-      # -----------------------------
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # -----------------------------
-      # Restore pip cache
-      # -----------------------------
       - name: Restore Cache
         uses: actions/cache@v4
         with:
@@ -42,25 +37,16 @@ jobs:
           restore-keys: |
             pip-cache-${{ runner.os }}-
 
-      # -----------------------------
-      # Install dependencies
-      # -----------------------------
       - name: Install dependencies
         working-directory: python-app
         run: pip install -r requirements.txt
 
-      # -----------------------------
-      # Build application
-      # -----------------------------
       - name: Build application
         working-directory: python-app
         run: |
           pip install build
           python -m build
 
-      # -----------------------------
-      # Upload artifact
-      # -----------------------------
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -74,9 +60,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # -----------------------------
-      # Download artifact from CI
-      # -----------------------------
       - name: Download artifact from CI
         uses: actions/download-artifact@v4
         with:
@@ -88,18 +71,12 @@ jobs:
           echo "Artifact received by CD:"
           ls -R cd-input
 
-      # -----------------------------
-      # Configure AWS credentials (OIDC)
-      # -----------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-west-2
 
-      # -----------------------------
-      # Deploy to S3
-      # -----------------------------
       - name: Deploy to S3
         run: |
           aws s3 sync cd-input/ \
