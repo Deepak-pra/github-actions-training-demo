@@ -1,0 +1,107 @@
+name: Caching Demo (CI → CD → S3)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    name: CI Job (Build & Produce Artifact)
+    runs-on: ubuntu-latest
+
+    outputs:
+      artifact_name: ${{ steps.meta.outputs.artifact_name }}
+
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v4
+
+      # -----------------------------
+      # Define artifact name
+      # -----------------------------
+      - name: Create step output
+        id: meta
+        run: |
+          echo "artifact_name=python-build" >> $GITHUB_OUTPUT
+
+      # -----------------------------
+      # Setup Python
+      # -----------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # -----------------------------
+      # Restore pip cache
+      # -----------------------------
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('python-app/requirements.txt') }}
+          restore-keys: |
+            pip-cache-${{ runner.os }}-
+
+      # -----------------------------
+      # Install dependencies
+      # -----------------------------
+      - name: Install dependencies
+        working-directory: python-app
+        run: pip install -r requirements.txt
+
+      # -----------------------------
+      # Build application
+      # -----------------------------
+      - name: Build application
+        working-directory: python-app
+        run: |
+          pip install build
+          python -m build
+
+      # -----------------------------
+      # Upload artifact
+      # -----------------------------
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.artifact_name }}
+          path: python-app/dist
+          retention-days: 3
+
+  cd:
+    name: CD Job (Deploy to S3)
+    needs: ci
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------
+      # Download artifact from CI
+      # -----------------------------
+      - name: Download artifact from CI
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.ci.outputs.artifact_name }}
+          path: cd-input
+
+      - name: Inspect artifact
+        run: |
+          echo "Artifact received by CD:"
+          ls -R cd-input
+
+      # -----------------------------
+      # Configure AWS credentials (OIDC)
+      # -----------------------------
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # -----------------------------
+      # Deploy to S3
+      # -----------------------------
+      - name: Deploy to S3
+        run: |
+          aws s3 sync cd-input/ \
+            s3://${{ vars.S3_BUCKET_NAME }}/python/ \
+            --delete
