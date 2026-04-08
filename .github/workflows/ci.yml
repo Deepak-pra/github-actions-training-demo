@@ -4,109 +4,46 @@ on:
   push:
     branches: [dev]
     paths:
-      - node-app/**
       - python-app/**
       - .github/workflows/**
   pull_request:
     branches: [dev]
     paths:
-      - node-app/**
       - python-app/**
       - .github/workflows/**
 
 jobs:
-  detect-changes:
-    name: Detect Changed Paths
-    runs-on: ubuntu-latest
-
-    outputs:
-      node_changed: ${{ steps.detect.outputs.node_changed }}
-      python_changed: ${{ steps.detect.outputs.python_changed }}
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Detect changes
-        id: detect
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          else
-            BASE_SHA="${{ github.event.before }}"
-          fi
-
-          git diff --name-only "$BASE_SHA" "${{ github.sha }}" > files.txt || true
-
-          NODE_CHANGED=false
-          PYTHON_CHANGED=false
-
-          if grep -q "^node-app/" files.txt; then
-            NODE_CHANGED=true
-          fi
-
-          if grep -q "^python-app/" files.txt; then
-            PYTHON_CHANGED=true
-          fi
-
-          echo "node_changed=$NODE_CHANGED" >> $GITHUB_OUTPUT
-          echo "python_changed=$PYTHON_CHANGED" >> $GITHUB_OUTPUT
-
-  node-ci:
-    name: Node.js CI
-    needs: detect-changes
-    if: needs.detect-changes.outputs.node_changed == 'true'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - run: npm install
-        working-directory: node-app
-
-      - run: npm test
-        working-directory: node-app
-
-      - run: npm run build
-        working-directory: node-app
-
-      - name: Upload Node artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-app-build
-          path: node-app/dist
-          retention-days: 5
-
   python-ci:
     name: Python CI
-    needs: detect-changes
-    if: needs.detect-changes.outputs.python_changed == 'true'
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - run: pip install -r requirements.txt
+      - name: Install dependencies
         working-directory: python-app
+        run: pip install -r requirements.txt
 
-      - run: python -m unittest
+      - name: Run unit tests
         working-directory: python-app
+        run: python -m unittest
 
-      - run: |
+      - name: Build Python package
+        working-directory: python-app
+        run: |
           pip install build
           python -m build
-        working-directory: python-app
 
+      # ✅ Upload artifact ONLY for push events (deployable)
       - name: Upload Python artifact
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: python-app-build
           path: python-app/dist
-          retention-days: 5
