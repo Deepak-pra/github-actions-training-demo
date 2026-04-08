@@ -73,13 +73,6 @@ jobs:
     needs: ci
     runs-on: ubuntu-latest
 
-    # ✅ REQUIRED for env-based vars
-    environment: dev
-
-    # ✅ Map environment vars → job env
-    env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
-
     steps:
       # -----------------------------
       # Download artifact from CI
@@ -102,7 +95,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: us-west-2
 
       # -----------------------------
       # Deploy to S3
