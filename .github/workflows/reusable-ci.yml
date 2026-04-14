@@ -1,0 +1,56 @@
+name: Reusable CI - Build Python Artifact
+
+on:
+  workflow_call:
+    outputs:
+      artifact_name:
+        description: Name of the build artifact
+        value: ${{ jobs.ci.outputs.artifact_name }}
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI - Build & Produce Artifact
+    runs-on: ubuntu-latest
+
+    outputs:
+      artifact_name: ${{ steps.meta.outputs.artifact_name }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Define artifact metadata
+        id: meta
+        run: |
+          echo "artifact_name=python-build" >> $GITHUB_OUTPUT
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Restore pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('python-app/requirements.txt') }}
+
+      - name: Install dependencies
+        working-directory: python-app
+        run: pip install -r requirements.txt
+
+      - name: Build application
+        working-directory: python-app
+        run: |
+          pip install build
+          python -m build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.artifact_name }}
+          path: python-app/dist
+          retention-days: 3
