@@ -1,0 +1,17 @@
+name: CD Demo (Reusable CI & CD)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/reusable-ci.yml
+
+  cd:
+    needs: ci
+    uses: ./.github/workflows/reusable-cd.yml
+    with:
+      artifact_name: ${{ needs.ci.outputs.artifact_name }}
+      environment: dev
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
