@@ -3,6 +3,9 @@ name: CD Demo (Reusable CI & CD)
 on:
   workflow_dispatch:
 
+permissions:
+  id-token: write
+
 jobs:
   ci:
     name: Run Reusable CI
