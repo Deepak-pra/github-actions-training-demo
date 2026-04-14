@@ -1,0 +1,54 @@
+name: Reusable CD - Deploy Artifact to S3
+
+on:
+  workflow_call:
+    inputs:
+      artifact_name:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      aws-region:
+        required: true
+        type: string
+      s3-bucket:
+        required: true
+        type: string
+    secrets:
+      AWS_ROLE_ARN:
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  cd:
+    name: CD - Deploy to S3
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: cd-input
+
+      - name: Inspect artifact
+        run: |
+          echo "Artifact received by CD:"
+          ls -R cd-input
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: Deploy to S3
+        run: |
+          aws s3 sync cd-input/ \
+            s3://${{ inputs.s3-bucket }}/python/ \
+            --delete

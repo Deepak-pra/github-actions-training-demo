@@ -2,12 +2,12 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [dev]
+    branches: [test]
     paths:
       - python-app/**
       - .github/workflows/**
   pull_request:
-    branches: [dev]
+    branches: [test]
     paths:
       - python-app/**
       - .github/workflows/**
