@@ -5,9 +5,11 @@ on:
 
 jobs:
   ci:
+    name: Run Reusable CI
     uses: ./.github/workflows/reusable-ci.yml
 
   cd:
+    name: Run Reusable CD
     needs: ci
     uses: ./.github/workflows/reusable-cd.yml
     with:
