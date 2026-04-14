@@ -5,11 +5,11 @@ on:
 
 jobs:
   ci:
-    uses: ./.github/workflows/reusable-ci.yml@v1
+    uses: ./.github/workflows/reusable-ci.yml
 
   cd:
     needs: ci
-    uses: ./.github/workflows/reusable-cd.yml@v1
+    uses: ./.github/workflows/reusable-cd.yml
     with:
       artifact_name: ${{ needs.ci.outputs.artifact_name }}
       environment: dev
