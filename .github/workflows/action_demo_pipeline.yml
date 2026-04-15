@@ -5,7 +5,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write   # Required for AWS OIDC (CD job)
+  id-token: write   # Required for AWS OIDC
 
 jobs:
   ci:
@@ -33,6 +33,9 @@ jobs:
     environment: dev
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
