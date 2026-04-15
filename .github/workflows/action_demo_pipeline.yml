@@ -1,0 +1,43 @@
+name: Custom Actions Demo (CI → CD)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # Required for AWS OIDC (CD job)
+
+jobs:
+  ci:
+    name: CI Job - Build Artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Run CI build action
+        uses: ./.github/actions/ci-build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-build
+          path: python-app/dist
+          retention-days: 3
+
+  cd:
+    name: CD Job - Deploy Artifact
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-build
+          path: artifact-input
+
+      - name: Run CD deploy action
+        uses: ./.github/actions/cd-deploy
