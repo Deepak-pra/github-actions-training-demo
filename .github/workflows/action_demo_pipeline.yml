@@ -13,18 +13,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Run CI build action
+      - name: Build via CI action
         uses: ./.github/actions/ci-build
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: python-build
           path: python-app/dist
-          retention-days: 3
 
   cd:
     name: CD Job - Deploy Artifact
@@ -33,14 +30,16 @@ jobs:
     environment: dev
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: python-build
           path: artifact-input
 
-      - name: Run CD deploy action
+      - name: Deploy via CD action
         uses: ./.github/actions/cd-deploy
+        with:
+          aws_region: ${{ vars.AWS_REGION }}
+          s3_bucket: ${{ vars.S3_BUCKET_NAME }}
+          aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}

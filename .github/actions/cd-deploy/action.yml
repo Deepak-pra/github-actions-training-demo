@@ -1,18 +1,29 @@
 name: CD Deploy Action
 description: Deploy build artifacts to S3
 
+inputs:
+  aws_region:
+    description: AWS region
+    required: true
+  s3_bucket:
+    description: Target S3 bucket
+    required: true
+  aws_role_arn:
+    description: AWS IAM role ARN
+    required: true
+
 runs:
   using: composite
   steps:
     - name: Configure AWS credentials using OIDC
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ vars.AWS_REGION }}
+        role-to-assume: ${{ inputs.aws_role_arn }}
+        aws-region: ${{ inputs.aws_region }}
 
     - name: Deploy artifacts to S3
       shell: bash
       run: |
         aws s3 sync artifact-input/ \
-          s3://${{ vars.S3_BUCKET_NAME }}/python/ \
+          s3://${{ inputs.s3_bucket }}/python/ \
           --delete
