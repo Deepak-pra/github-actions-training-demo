@@ -1,0 +1,71 @@
+name: CI - Pull Request Validation
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - stage
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI - Validate PR Source Code
+    runs-on: ubuntu-latest
+
+    # 🔐 Block forked PRs (critical security control)
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+
+    steps:
+      # --------------------------------------------------
+      # Checkout PR SOURCE branch (not merge commit)
+      # --------------------------------------------------
+      - name: Checkout PR source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      # --------------------------------------------------
+      # Setup Python
+      # --------------------------------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # --------------------------------------------------
+      # Dependency cache
+      # --------------------------------------------------
+      - name: Restore pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('python-app/requirements.txt') }}
+
+      # --------------------------------------------------
+      # Install dependencies
+      # --------------------------------------------------
+      - name: Install dependencies
+        working-directory: python-app
+        run: pip install -r requirements.txt
+
+      # --------------------------------------------------
+      # Linting
+      # --------------------------------------------------
+      - name: Lint code
+        working-directory: python-app
+        run: |
+          pip install flake8
+          flake8 .
+
+      # --------------------------------------------------
+      # Unit Tests
+      # --------------------------------------------------
+      - name: Run unit tests
+        working-directory: python-app
+        run: |
+          pip install pytest
+          pytest
