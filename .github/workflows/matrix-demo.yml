@@ -1,0 +1,56 @@
+name: Matrix Strategy Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select target environment"
+        required: true
+        type: choice
+        default: dev
+        options:
+          - dev
+          - stage
+          - prod
+
+      run_tests:
+        description: "Run tests as part of the matrix"
+        required: true
+        type: choice
+        default: "true"
+        options:
+          - "true"
+          - "false"
+
+jobs:
+  matrix-demo:
+    name: Matrix Job Demo
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+        job-type: ["build", "test"]
+
+    steps:
+      - name: Display execution context
+        run: |
+          echo "Environment      : ${{ inputs.environment }}"
+          echo "Python version   : ${{ matrix.python-version }}"
+          echo "Job type         : ${{ matrix.job-type }}"
+          echo "Run tests        : ${{ inputs.run_tests }}"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Simulate build step
+        if: ${{ matrix.job-type == 'build' }}
+        run: |
+          echo "Building application using Python ${{ matrix.python-version }}"
+
+      - name: Simulate test step
+        if: ${{ matrix.job-type == 'test' && inputs.run_tests == 'true' }}
+        run: |
+          echo "Running tests using Python ${{ matrix.python-version }}"
