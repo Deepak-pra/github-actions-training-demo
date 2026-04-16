@@ -74,7 +74,7 @@ jobs:
             --delete
 
       # --------------------------------------------------
-      #  RELEASE TAGGING — PROD ONLY
+      #  RELEASE TAGGING
       # --------------------------------------------------
       - name: Create production release tag
         if: github.ref_name == 'main'
