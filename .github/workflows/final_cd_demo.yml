@@ -65,7 +65,6 @@ jobs:
           path: python-app/dist
           retention-days: 30
 
-      # ✅ PROD RELEASE TAG ONLY
       - name: Create production release tag
         if: github.ref_name == 'main'
         run: |
