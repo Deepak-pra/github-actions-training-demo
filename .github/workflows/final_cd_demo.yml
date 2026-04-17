@@ -49,12 +49,6 @@ jobs:
       - name: Deploy to AWS S3
         run: aws s3 sync python-app/dist/ s3://${{ vars.S3_BUCKET_NAME }}/ --delete
 
-      - name: Upload CD artifacts
-        uses: actions/upload-artifact@V4
-        with:
-            name: deployed-${{ github.ref_name }}-${{ github.sha }}
-            path: python-app/dist
-            retention-days: 10
 
           
 
