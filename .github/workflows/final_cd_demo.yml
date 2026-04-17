@@ -74,7 +74,7 @@ jobs:
             --delete
 
       # --------------------------------------------------
-      # ✅ CD ARTIFACT (what was deployed)
+      #  CD ARTIFACT (what was deployed)
       # --------------------------------------------------
       - name: Upload deployed artifacts
         uses: actions/upload-artifact@v4
@@ -84,7 +84,7 @@ jobs:
           retention-days: 30
 
       # --------------------------------------------------
-      # ✅ RELEASE TAGGING (PROD ONLY)
+      #  RELEASE TAGGING (PROD ONLY)
       # --------------------------------------------------
       - name: Create production release tag
         if: github.ref_name == 'main'
