@@ -1,4 +1,4 @@
-name: CI - Pull Request Validation
+name: CI - Validation
 
 on:
   pull_request:
@@ -12,60 +12,46 @@ permissions:
 
 jobs:
   ci:
-    name: CI - Validate PR Source Code
+    name: CI - Source code validation
     runs-on: ubuntu-latest
 
-    # 🔐 Block forked PRs (critical security control)
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-
-    steps:
-      # --------------------------------------------------
-      # Checkout PR SOURCE branch (not merge commit)
-      # --------------------------------------------------
-      - name: Checkout PR source branch
+    steps: 
+      - name: Code Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      # --------------------------------------------------
-      # Setup Python
-      # --------------------------------------------------
-      - name: Setup Python
+      - name: Python Setup
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # --------------------------------------------------
-      # Dependency cache
-      # --------------------------------------------------
       - name: Restore pip cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-${{ hashFiles('python-app/requirements.txt') }}
-
-      # --------------------------------------------------
-      # Install dependencies
-      # --------------------------------------------------
-      - name: Install dependencies
+          
+      - name: Dependency Installation
         working-directory: python-app
         run: pip install -r requirements.txt
 
-      # --------------------------------------------------
-      # Linting
-      # --------------------------------------------------
-      - name: Lint code
+      - name: Python Linting
         working-directory: python-app
         run: |
           pip install flake8
           flake8 .
 
-      # --------------------------------------------------
-      # Unit Tests
-      # --------------------------------------------------
-      - name: Run unit tests
+      - name: Python Unit Testing
         working-directory: python-app
         run: |
           pip install pytest
-          pytest
+          pytest --junitxml=test-results.xml
+          
+      - name: Upload CI results
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-results-${{ github.event.pull_request.head.sha }}
+          path: python-app/test-results.xml
+          retention-days: 10
