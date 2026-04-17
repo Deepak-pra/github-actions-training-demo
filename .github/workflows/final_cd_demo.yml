@@ -1,0 +1,63 @@
+name: CD - Deploy the Application
+
+on:
+  push:
+    branches:
+      - dev
+      - stage
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  cd:
+    name: CD - Build and Deploy Application
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Dependency Installation
+        working-directory: python-app
+        run: pip install -r requirements.txt
+        
+      - name: Build Python Application
+        working-directory: python-app
+        run: |
+          pip install build
+          python -m build
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          
+      - name: Deploy to AWS S3
+        run: aws s3 sync python-app/dist/ s3://${{ vars.S3_BUCKET_NAME }}/ --delete
+
+      - name: Upload CD artifacts
+        uses: actions/upload-artifact@V4
+        with:
+            name: deployed-${{ github.ref_name }}-${{ github.sha }}
+            path: python-app/dist
+            retention-days: 10
+
+          
+
+
+
+
