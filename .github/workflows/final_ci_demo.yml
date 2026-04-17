@@ -14,7 +14,7 @@ jobs:
   ci:
     name: CI - Source code validation
     runs-on: ubuntu-latest
-    
+
     steps: 
       - name: Code Checkout
         uses: actions/checkout@v4
@@ -26,7 +26,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          
+
       - name: Restore pip cache
         uses: actions/cache@v4
         with:
@@ -42,16 +42,16 @@ jobs:
         run: |
           pip install flake8
           flake8 .
-          
+
       - name: Python Unit Testing
         working-directory: python-app
         run: |
           pip install pytest
-          pytest --junitxl=test-results.xml
+          pytest --junitxml=test-results.xml
           
       - name: Upload CI results
         uses: actions/upload-artifact@v4
         with:
           name: ci-test-results-${{ github.event.pull_request.head.sha }}
           path: python-app/test-results.xml
-          retention-days: 10   
+          retention-days: 10
