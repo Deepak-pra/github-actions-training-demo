@@ -32,6 +32,15 @@ jobs:
         python-version: ["3.9", "3.10", "3.11"]
         job-type: ["build", "test"]
 
+        exclude:
+          - python-version: "3.9"
+            job-type: "test"
+
+        include:
+          - python-version: "3.11"
+            job-type: "test"
+            extra-checks: "true"
+
     steps:
       - name: Display execution context
         run: |
@@ -39,6 +48,7 @@ jobs:
           echo "Python version   : ${{ matrix.python-version }}"
           echo "Job type         : ${{ matrix.job-type }}"
           echo "Run tests        : ${{ inputs.run_tests }}"
+          echo "Extra checks     : ${{ matrix.extra-checks || 'false' }}"
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -46,11 +56,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Simulate build step
-        if: ${{ matrix.job-type == 'build' }}
+        if: matrix.job-type == 'build'
         run: |
           echo "Building application using Python ${{ matrix.python-version }}"
 
       - name: Simulate test step
-        if: ${{ matrix.job-type == 'test' && inputs.run_tests == 'true' }}
+        if: matrix.job-type == 'test' && inputs.run_tests == 'true'
         run: |
           echo "Running tests using Python ${{ matrix.python-version }}"
+
+      - name: Extra validation step
+        if: matrix.extra-checks == 'true'
+        run: |
+          echo "Running EXTRA checks for Python ${{ matrix.python-version }}"
