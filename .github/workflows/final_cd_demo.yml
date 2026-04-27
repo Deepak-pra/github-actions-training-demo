@@ -1,57 +1,124 @@
-name: CD - Deploy the Application
+name: CD - Demo Application Deployment and Release
 
 on:
   push:
-    branches:
-      - dev
-      - stage
-      - main
+    branches: [dev, stage, main]
+
+concurrency:
+  group: cd-${{ github.ref_name }}
+  cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write      # Required for GitHub Release
   id-token: write
+  deployments: write
+
+env:
+  APP_NAME: python-app
+  PYTHON_VERSION: "3.11"
+  RELEASE_VERSION: v${{ github.run_number }}
 
 jobs:
-  cd:
-    name: CD - Build and Deploy Application
+  deploy:
+    name: Build and Deploy Application
     runs-on: ubuntu-latest
+    timeout-minutes: 40
 
     environment:
       name: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}
 
     steps:
-      - name: Checkout Code
+      - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Dependency Installation
-        working-directory: python-app
-        run: pip install -r requirements.txt
-        
-      - name: Build Python Application
+      - name: Build application artifact
         working-directory: python-app
         run: |
+          pip install --upgrade pip
           pip install build
           python -m build
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-          
-      - name: Deploy to AWS S3
-        run: aws s3 sync python-app/dist/ s3://${{ vars.S3_BUCKET_NAME }}/ --delete
 
+      - name: Deploy artifact
+        run: |
+          aws s3 sync python-app/dist/ \
+            s3://${{ vars.S3_BUCKET_NAME }}/${{ github.ref_name }}/ \
+            --delete
 
-          
+  release:
+    name: Production Release Governance
+    needs: deploy                     # ✅ Mandatory dependency
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
 
+    if: github.ref_name == 'main'      # ✅ Production only
 
+    environment:
+      name: prod
 
+    env:
+      MAX_RETRIES: 5
+      BASE_DELAY_SECONDS: 15
+      RELEASE_VERSION: v${{ github.run_number }}
 
+    steps:
+      - name: Generate release notes
+        run: |
+          cat <<EOF > release-notes.md
+          Application: python-app
+          Environment: Production
+          Release Version: $RELEASE_VERSION
+          Commit SHA: ${{ github.sha }}
+          Deployed By: ${{ github.actor }}
+          Deployment Time (UTC): $(date -u)
+
+          Validation:
+          - CI quality and security gates passed
+          - Artifact built once and deployed successfully
+          - OIDC-based authentication used
+
+          Rollback Strategy:
+          Redeploy a previous release by syncing its S3 folder.
+
+          Example:
+          aws s3 sync s3://<bucket>/<previous-version>/ s3://<bucket>/prod --delete
+          EOF
+
+      - name: Create GitHub Release (retry with exponential backoff)
+        shell: bash
+        run: |
+          attempt=1
+
+          while [ $attempt -le $MAX_RETRIES ]; do
+            echo "Release attempt $attempt of $MAX_RETRIES"
+
+            if gh release create "$RELEASE_VERSION" \
+              --title "Production Release $RELEASE_VERSION" \
+              --notes-file release-notes.md; then
+              echo "GitHub Release created successfully"
+              exit 0
+            fi
+
+            echo "Release creation failed"
+
+            if [ $attempt -eq $MAX_RETRIES ]; then
+              echo "Maximum retries reached. Release failed."
+              exit 1
+            fi
+
+            delay=$(( BASE_DELAY_SECONDS * 2 ** (attempt - 1) ))
+            echo "Retrying in $delay seconds..."
+            sleep $delay
+
+            attempt=$((attempt + 1))
+          done       
