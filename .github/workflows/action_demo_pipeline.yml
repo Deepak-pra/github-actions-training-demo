@@ -3,43 +3,92 @@ name: Custom Actions Demo (CI → CD)
 on:
   workflow_dispatch:
 
+# Prevent parallel demo runs
+concurrency:
+  group: custom-actions-demo
+  cancel-in-progress: false
+
 permissions:
   contents: read
-  id-token: write   # Required for AWS OIDC
+
+env:
+  APP_NAME: python-app
+  BUILD_ID: ${{ github.run_number }}-${{ github.sha }}
 
 jobs:
   ci:
     name: CI Job - Build Artifact
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - name: Build via CI action
+      - name: Execute CI build custom action
         uses: ./.github/actions/ci-build
 
-      - uses: actions/upload-artifact@v4
+      - name: Generate artifact checksum
+        run: |
+          sha256sum python-app/dist/* > artifact-checksum.txt
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
           name: python-build
-          path: python-app/dist
+          path: |
+            python-app/dist
+            artifact-checksum.txt
+          retention-days: 7
+
+      - name: Record CI metadata
+        run: |
+          echo "CI Phase Completed" >> $GITHUB_STEP_SUMMARY
+          echo "Application: $APP_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "Build ID: $BUILD_ID" >> $GITHUB_STEP_SUMMARY
+          echo "Artifact: python-build" >> $GITHUB_STEP_SUMMARY
+          echo "Integrity check: SHA256 checksum generated" >> $GITHUB_STEP_SUMMARY
 
   cd:
     name: CD Job - Deploy Artifact
     needs: ci
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: dev
 
-    steps:
-      - uses: actions/checkout@v4
+    permissions:
+      contents: read
+      id-token: write   # Required for AWS OIDC
 
-      - uses: actions/download-artifact@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
         with:
           name: python-build
           path: artifact-input
 
-      - name: Deploy via CD action
+      - name: Verify artifact integrity
+        run: |
+          cd artifact-input
+          sha256sum -c artifact-checksum.txt
+
+      - name: Execute CD deploy custom action
         uses: ./.github/actions/cd-deploy
         with:
           aws_region: ${{ vars.AWS_REGION }}
           s3_bucket: ${{ vars.S3_BUCKET_NAME }}
           aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}
+
+      - name: Record CD metadata
+        run: |
+          echo "CD Phase Completed" >> $GITHUB_STEP_SUMMARY
+          echo "Environment: dev" >> $GITHUB_STEP_SUMMARY
+          echo "AWS Region: ${{ vars.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "S3 Bucket: ${{ vars.S3_BUCKET_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "Deployment Status: Success" >> $GITHUB_STEP_SUMMARY
