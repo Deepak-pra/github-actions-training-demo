@@ -52,7 +52,7 @@ jobs:
         working-directory: python-app
         run: |
           pip install pip-audit
-          pip-audit --fail-on high
+          pip-audit
 
       - name: Unit tests
         working-directory: python-app
